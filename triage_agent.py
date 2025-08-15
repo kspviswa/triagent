@@ -114,13 +114,27 @@ RULE:
 ).strip()
 
 
-def get_perplexity_llm() -> LLM:
-    """Create a Perplexity Sonar LLM config for CrewAI.
+def get_openai_compatible_llm() -> LLM:
+    """Create a generic OpenAI-compatible LLM config for CrewAI.
 
-    Reads API key from env var PPLX_API_KEY or PERPLEXITY_API_KEY.
+    Env vars (most specific to most generic):
+    - OPENAI_MODEL (e.g., "gpt-4o-mini", "sonar", etc.)
+    - OPENAI_BASE_URL (e.g., "https://api.openai.com/v1", "https://api.perplexity.ai/")
+    - OPENAI_API_KEY
+
+    Fallbacks:
+    - If model is missing, default to "sonar".
+    - If base_url is missing, default to Perplexity: "https://api.perplexity.ai/".
+    - If OPENAI_API_KEY missing, fallback to PPLX_API_KEY or PERPLEXITY_API_KEY for convenience.
     """
-    api_key = os.getenv("PPLX_API_KEY") or os.getenv("PERPLEXITY_API_KEY")
-    return LLM(model="sonar", base_url="https://api.perplexity.ai/", api_key=api_key)
+    model = os.getenv("OPENAI_MODEL") or "sonar"
+    base_url = os.getenv("OPENAI_BASE_URL") or "https://api.perplexity.ai/"
+    api_key = (
+        os.getenv("OPENAI_API_KEY")
+        or os.getenv("PPLX_API_KEY")
+        or os.getenv("PERPLEXITY_API_KEY")
+    )
+    return LLM(model=model, base_url=base_url, api_key=api_key)
 
 
 def build_triage_agent(tools: Optional[List] = None, llm: Optional[LLM] = None) -> Agent:
@@ -135,7 +149,7 @@ def build_triage_agent(tools: Optional[List] = None, llm: Optional[LLM] = None) 
         ),
         allow_delegation=False,
         verbose=True,
-        llm=llm or get_perplexity_llm(),
+        llm=llm or get_openai_compatible_llm(),
         tools=tools or [restclient, logmatcher, cmdprompt],
     )
 
